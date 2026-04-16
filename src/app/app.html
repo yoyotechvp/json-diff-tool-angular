@@ -1,0 +1,171 @@
+<div class="app-container">
+  <header class="app-header">
+    <div class="header-content">
+      <h1 class="app-title">{{ title }}</h1>
+      <p class="app-subtitle">比较两个 JSON 数据，直观展示差异</p>
+    </div>
+  </header>
+
+  <main class="main-content">
+    @if (!showDiff) {
+      <div class="input-section">
+        <div class="input-row">
+          <div class="input-panel">
+            <app-json-input
+              [label]="'原始 JSON (Left)'"
+              [value]="leftJson"
+              [side]="'left'"
+              (valueChange)="onLeftJsonChange($event)"
+              (loadSample)="onLoadSample($event)"
+            ></app-json-input>
+          </div>
+          
+          <div class="swap-button-container">
+            <button class="btn-swap" (click)="swapJson()" title="交换两个 JSON">
+              ⇄
+            </button>
+          </div>
+          
+          <div class="input-panel">
+            <app-json-input
+              [label]="'目标 JSON (Right)'"
+              [value]="rightJson"
+              [side]="'right'"
+              (valueChange)="onRightJsonChange($event)"
+              (loadSample)="onLoadSample($event)"
+            ></app-json-input>
+          </div>
+        </div>
+        
+        <div class="action-bar">
+          <button class="btn-primary btn-compare" (click)="compareJson()">
+            🔍 比较差异
+          </button>
+          <button class="btn-secondary" (click)="clearAll()">
+            清空所有
+          </button>
+        </div>
+      </div>
+    }
+    
+    @if (showDiff && diffResult) {
+      <div class="result-section">
+        <div class="result-header">
+          <div class="result-summary">
+            <h2>比较结果</h2>
+            <div class="summary-stats">
+              <span class="stat stat-added">
+                <span class="stat-icon">+</span>
+                新增: {{ getSummary().added }}
+              </span>
+              <span class="stat stat-removed">
+                <span class="stat-icon">-</span>
+                删除: {{ getSummary().removed }}
+              </span>
+              <span class="stat stat-modified">
+                <span class="stat-icon">~</span>
+                修改: {{ getSummary().modified }}
+              </span>
+              <span class="stat stat-unchanged">
+                <span class="stat-icon">=</span>
+                相同: {{ getSummary().unchanged }}
+              </span>
+            </div>
+          </div>
+          
+          <div class="result-actions">
+            <div class="view-toggle">
+              <button 
+                class="btn-toggle" 
+                [class.active]="viewMode === 'split'"
+                (click)="setViewMode('split')"
+              >
+                分屏视图
+              </button>
+              <button 
+                class="btn-toggle" 
+                [class.active]="viewMode === 'unified'"
+                (click)="setViewMode('unified')"
+              >
+                统一视图
+              </button>
+            </div>
+            
+            <div class="expand-toggle">
+              <button class="btn-secondary" (click)="expandAll()">
+                全部展开
+              </button>
+              <button class="btn-secondary" (click)="collapseAll()">
+                全部折叠
+              </button>
+            </div>
+            
+            <button class="btn-back" (click)="showDiff = false">
+              ← 返回编辑
+            </button>
+          </div>
+        </div>
+        
+        <div class="result-content" [class.unified-mode]="viewMode === 'unified'">
+          @if (viewMode === 'split') {
+            <div class="split-view">
+              <div class="diff-panel">
+                <div class="panel-header">
+                  <h3>原始 (Left)</h3>
+                </div>
+                <div class="panel-content">
+                  @if (diffResult.left) {
+                    <app-json-tree
+                      [node]="diffResult.left"
+                      [level]="0"
+                      [side]="'left'"
+                    ></app-json-tree>
+                  } @else {
+                    <div class="empty-result">
+                      <p>无数据</p>
+                    </div>
+                  }
+                </div>
+              </div>
+              
+              <div class="diff-panel">
+                <div class="panel-header">
+                  <h3>目标 (Right)</h3>
+                </div>
+                <div class="panel-content">
+                  @if (diffResult.right) {
+                    <app-json-tree
+                      [node]="diffResult.right"
+                      [level]="0"
+                      [side]="'right'"
+                    ></app-json-tree>
+                  } @else {
+                    <div class="empty-result">
+                      <p>无数据</p>
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+          
+          @if (viewMode === 'unified') {
+            <div class="unified-view">
+              @if (diffResult.left) {
+                <app-json-tree
+                  [node]="diffResult.left"
+                  [level]="0"
+                  [side]="'right'"
+                ></app-json-tree>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </main>
+
+  <footer class="app-footer">
+    <p>JSON Diff 可视化工具 - 使用 Angular 构建</p>
+  </footer>
+</div>
