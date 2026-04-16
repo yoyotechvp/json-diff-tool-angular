@@ -1,121 +1,120 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, signal, computed } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { JsonTreeComponent } from './components/json-tree/json-tree.component';
+import { JsonInputComponent } from './components/json-input/json-input.component';
 import { JsonDiffService, DiffResult, DiffNode } from './services/json-diff.service';
 import { SampleDataService } from './services/sample-data.service';
 
 @Component({
   selector: 'app-root',
+  standalone: true,
+  imports: [
+    CommonModule,
+    JsonTreeComponent,
+    JsonInputComponent
+  ],
   templateUrl: './app.html',
-  standalone: false,
   styleUrl: './app.css'
 })
 export class App implements OnInit {
   title = 'JSON Diff 可视化工具';
   
-  leftJson: string = '';
-  rightJson: string = '';
-  diffResult: DiffResult | null = null;
-  showDiff: boolean = false;
-  viewMode: 'split' | 'unified' = 'split';
-  
+  readonly leftJson = signal('');
+  readonly rightJson = signal('');
+  readonly diffResult = signal<DiffResult | null>(null);
+  readonly showDiff = signal(false);
+  readonly viewMode = signal<'split' | 'unified'>('split');
+
+  readonly summary = computed(() => {
+    const result = this.diffResult();
+    return result?.summary || { added: 0, removed: 0, modified: 0, unchanged: 0, total: 0 };
+  });
+
+  readonly performance = computed(() => {
+    const result = this.diffResult();
+    return result?.performance || { compareTime: 0, nodeCount: 0, maxDepth: 0 };
+  });
+
   constructor(
     private jsonDiffService: JsonDiffService,
-    private sampleDataService: SampleDataService
+    private sampleDataService: SampleDataService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
     const sample = this.sampleDataService.getSample(0);
     if (sample) {
-      this.leftJson = sample.left;
-      this.rightJson = sample.right;
+      this.leftJson.set(sample.left);
+      this.rightJson.set(sample.right);
     }
   }
 
   onLeftJsonChange(value: string): void {
-    this.leftJson = value;
+    this.leftJson.set(value);
   }
 
   onRightJsonChange(value: string): void {
-    this.rightJson = value;
+    this.rightJson.set(value);
   }
 
   onLoadSample(data: { left: string; right: string }): void {
-    this.leftJson = data.left;
-    this.rightJson = data.right;
-    this.showDiff = false;
-    this.diffResult = null;
+    this.leftJson.set(data.left);
+    this.rightJson.set(data.right);
+    this.showDiff.set(false);
+    this.diffResult.set(null);
   }
 
   compareJson(): void {
     try {
-      const leftObj = this.jsonDiffService.parseJson(this.leftJson);
-      const rightObj = this.jsonDiffService.parseJson(this.rightJson);
+      const leftObj = this.jsonDiffService.parseJson(this.leftJson());
+      const rightObj = this.jsonDiffService.parseJson(this.rightJson());
       
-      this.diffResult = this.jsonDiffService.compare(leftObj, rightObj);
-      this.showDiff = true;
+      const result = this.jsonDiffService.compare(leftObj, rightObj, 2);
+      this.diffResult.set(result);
+      this.showDiff.set(true);
     } catch (e) {
       alert(`比较失败: ${(e as Error).message}`);
     }
   }
 
   swapJson(): void {
-    const temp = this.leftJson;
-    this.leftJson = this.rightJson;
-    this.rightJson = temp;
-    this.showDiff = false;
-    this.diffResult = null;
+    const temp = this.leftJson();
+    this.leftJson.set(this.rightJson());
+    this.rightJson.set(temp);
+    this.showDiff.set(false);
+    this.diffResult.set(null);
   }
 
   clearAll(): void {
-    this.leftJson = '';
-    this.rightJson = '';
-    this.showDiff = false;
-    this.diffResult = null;
-  }
-
-  hasResult(): boolean {
-    return this.diffResult !== null;
-  }
-
-  getSummary(): { added: number; removed: number; modified: number; unchanged: number } {
-    return this.diffResult?.summary || { added: 0, removed: 0, modified: 0, unchanged: 0 };
-  }
-
-  toggleExpand(node: DiffNode, expand: boolean): void {
-    this.setExpandRecursive(node, expand);
-  }
-
-  private setExpandRecursive(node: DiffNode, expand: boolean): void {
-    node.isExpanded = expand;
-    if (node.children) {
-      for (const child of node.children) {
-        this.setExpandRecursive(child, expand);
-      }
-    }
+    this.leftJson.set('');
+    this.rightJson.set('');
+    this.showDiff.set(false);
+    this.diffResult.set(null);
   }
 
   expandAll(): void {
-    if (this.diffResult?.left) {
-      this.toggleExpand(this.diffResult.left, true);
+    const result = this.diffResult();
+    if (result?.left) {
+      this.jsonDiffService.setNodeExpanded(result.left, true, true);
     }
-    if (this.diffResult?.right && this.diffResult.right !== this.diffResult.left) {
-      this.toggleExpand(this.diffResult.right, true);
+    if (result?.right && result.right !== result.left) {
+      this.jsonDiffService.setNodeExpanded(result.right, true, true);
     }
+    this.cdr.markForCheck();
   }
 
   collapseAll(): void {
-    if (this.diffResult?.left) {
-      this.toggleExpand(this.diffResult.left, false);
+    const result = this.diffResult();
+    if (result?.left) {
+      this.jsonDiffService.setNodeExpanded(result.left, false, true);
     }
-    if (this.diffResult?.right && this.diffResult.right !== this.diffResult.left) {
-      this.toggleExpand(this.diffResult.right, false);
+    if (result?.right && result.right !== result.left) {
+      this.jsonDiffService.setNodeExpanded(result.right, false, true);
     }
+    this.cdr.markForCheck();
   }
 
   setViewMode(mode: 'split' | 'unified'): void {
-    this.viewMode = mode;
-  }
-
-  onToggleAllChildren(expand: boolean, node: DiffNode): void {
-    this.toggleExpand(node, expand);
+    this.viewMode.set(mode);
   }
 }

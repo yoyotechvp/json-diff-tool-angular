@@ -1,13 +1,17 @@
 import { Injectable } from '@angular/core';
 
+export type DiffType = 'added' | 'removed' | 'modified' | 'unchanged';
+
 export interface DiffNode {
   key: string;
   path: string;
-  type: 'added' | 'removed' | 'modified' | 'unchanged';
+  type: DiffType;
   value: any;
   oldValue?: any;
   children?: DiffNode[];
   isExpanded: boolean;
+  depth: number;
+  hasNestedChanges: boolean;
 }
 
 export interface DiffResult {
@@ -18,6 +22,12 @@ export interface DiffResult {
     removed: number;
     modified: number;
     unchanged: number;
+    total: number;
+  };
+  performance: {
+    compareTime: number;
+    nodeCount: number;
+    maxDepth: number;
   };
 }
 
@@ -35,10 +45,6 @@ export class JsonDiffService {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
   }
 
-  private isArray(value: any): boolean {
-    return Array.isArray(value);
-  }
-
   private buildPath(parentPath: string, key: string | number): string {
     if (parentPath === '') {
       return String(key);
@@ -46,7 +52,131 @@ export class JsonDiffService {
     return typeof key === 'number' ? `${parentPath}[${key}]` : `${parentPath}.${key}`;
   }
 
-  private compareValues(oldVal: any, newVal: any, path: string, key: string | number): DiffNode {
+  private shouldExpandNode(node: DiffNode, maxAutoExpandDepth: number = 3): boolean {
+    if (node.depth > maxAutoExpandDepth) {
+      return false;
+    }
+    return node.type !== 'unchanged' || node.hasNestedChanges;
+  }
+
+  compare(oldJson: any, newJson: any, maxAutoExpandDepth: number = 3): DiffResult {
+    const startTime = performance.now();
+    
+    if (oldJson === undefined && newJson === undefined) {
+      return {
+        left: null,
+        right: null,
+        summary: { added: 0, removed: 0, modified: 0, unchanged: 0, total: 0 },
+        performance: { compareTime: 0, nodeCount: 0, maxDepth: 0 }
+      };
+    }
+
+    let result: DiffNode | null = null;
+    let maxDepth = 0;
+    let nodeCount = 0;
+
+    const countNodes = (node: DiffNode): void => {
+      nodeCount++;
+      if (node.depth > maxDepth) {
+        maxDepth = node.depth;
+      }
+      if (node.children) {
+        for (const child of node.children) {
+          countNodes(child);
+        }
+      }
+    };
+
+    if (oldJson === undefined) {
+      result = this.createAddedNode(newJson, '', 0);
+    } else if (newJson === undefined) {
+      result = this.createRemovedNode(oldJson, '', 0);
+    } else {
+      result = this.compareValues(oldJson, newJson, '', '', 0);
+    }
+
+    if (result) {
+      this.applyExpandStrategy(result, maxAutoExpandDepth);
+      countNodes(result);
+    }
+
+    const summary = this.countChanges(result);
+    const compareTime = performance.now() - startTime;
+
+    return {
+      left: result,
+      right: result,
+      summary: {
+        ...summary,
+        total: summary.added + summary.removed + summary.modified + summary.unchanged
+      },
+      performance: {
+        compareTime,
+        nodeCount,
+        maxDepth
+      }
+    };
+  }
+
+  private createAddedNode(value: any, path: string, depth: number): DiffNode {
+    const hasChildren = this.isObject(value) || Array.isArray(value);
+    const children: DiffNode[] = [];
+    
+    if (hasChildren) {
+      const items = Array.isArray(value) ? value : Object.keys(value);
+      for (let i = 0; i < items.length; i++) {
+        const key = Array.isArray(value) ? i : items[i];
+        const childValue = Array.isArray(value) ? value[i] : value[key as string];
+        const childPath = this.buildPath(path, key);
+        children.push(this.createAddedNode(childValue, childPath, depth + 1));
+      }
+    }
+
+    return {
+      key: '',
+      path,
+      type: 'added',
+      value,
+      children: children.length > 0 ? children : undefined,
+      isExpanded: depth < 3,
+      depth,
+      hasNestedChanges: true
+    };
+  }
+
+  private createRemovedNode(value: any, path: string, depth: number): DiffNode {
+    const hasChildren = this.isObject(value) || Array.isArray(value);
+    const children: DiffNode[] = [];
+    
+    if (hasChildren) {
+      const items = Array.isArray(value) ? value : Object.keys(value);
+      for (let i = 0; i < items.length; i++) {
+        const key = Array.isArray(value) ? i : items[i];
+        const childValue = Array.isArray(value) ? value[i] : value[key as string];
+        const childPath = this.buildPath(path, key);
+        children.push(this.createRemovedNode(childValue, childPath, depth + 1));
+      }
+    }
+
+    return {
+      key: '',
+      path,
+      type: 'removed',
+      value,
+      children: children.length > 0 ? children : undefined,
+      isExpanded: depth < 3,
+      depth,
+      hasNestedChanges: true
+    };
+  }
+
+  private compareValues(
+    oldVal: any, 
+    newVal: any, 
+    path: string, 
+    key: string | number, 
+    depth: number
+  ): DiffNode {
     const fullPath = this.buildPath(path, key);
     const oldType = this.getType(oldVal);
     const newType = this.getType(newVal);
@@ -58,7 +188,9 @@ export class JsonDiffService {
         type: 'modified',
         value: newVal,
         oldValue: oldVal,
-        isExpanded: true
+        isExpanded: false,
+        depth,
+        hasNestedChanges: false
       };
     }
 
@@ -68,16 +200,18 @@ export class JsonDiffService {
         path: fullPath,
         type: 'unchanged',
         value: newVal,
-        isExpanded: true
+        isExpanded: false,
+        depth,
+        hasNestedChanges: false
       };
     }
 
     if (this.isObject(oldVal) && this.isObject(newVal)) {
-      return this.compareObjects(oldVal, newVal, path, key);
+      return this.compareObjects(oldVal, newVal, path, key, depth);
     }
 
-    if (this.isArray(oldVal) && this.isArray(newVal)) {
-      return this.compareArrays(oldVal, newVal, path, key);
+    if (Array.isArray(oldVal) && Array.isArray(newVal)) {
+      return this.compareArrays(oldVal, newVal, path, key, depth);
     }
 
     return {
@@ -86,15 +220,24 @@ export class JsonDiffService {
       type: 'modified',
       value: newVal,
       oldValue: oldVal,
-      isExpanded: true
+      isExpanded: false,
+      depth,
+      hasNestedChanges: false
     };
   }
 
-  private compareObjects(oldObj: Record<string, any>, newObj: Record<string, any>, path: string, key: string | number): DiffNode {
+  private compareObjects(
+    oldObj: Record<string, any>, 
+    newObj: Record<string, any>, 
+    path: string, 
+    key: string | number, 
+    depth: number
+  ): DiffNode {
     const fullPath = this.buildPath(path, key);
     const allKeys = new Set([...Object.keys(oldObj), ...Object.keys(newObj)]);
     const children: DiffNode[] = [];
     let hasChanges = false;
+    let hasNestedChanges = false;
 
     for (const k of allKeys) {
       const oldHas = Object.prototype.hasOwnProperty.call(oldObj, k);
@@ -102,30 +245,49 @@ export class JsonDiffService {
 
       if (!oldHas) {
         hasChanges = true;
+        hasNestedChanges = true;
         children.push({
           key: k,
           path: this.buildPath(fullPath, k),
           type: 'added',
           value: newObj[k],
-          isExpanded: true
+          isExpanded: false,
+          depth: depth + 1,
+          hasNestedChanges: false
         });
       } else if (!newHas) {
         hasChanges = true;
+        hasNestedChanges = true;
         children.push({
           key: k,
           path: this.buildPath(fullPath, k),
           type: 'removed',
           value: oldObj[k],
-          isExpanded: true
+          isExpanded: false,
+          depth: depth + 1,
+          hasNestedChanges: false
         });
       } else {
-        const child = this.compareValues(oldObj[k], newObj[k], fullPath, k);
-        if (child.type !== 'unchanged') {
+        const child = this.compareValues(oldObj[k], newObj[k], fullPath, k, depth + 1);
+        if (child.type !== 'unchanged' || child.hasNestedChanges) {
           hasChanges = true;
+          if (child.hasNestedChanges || child.type !== 'unchanged') {
+            hasNestedChanges = true;
+          }
         }
         children.push(child);
       }
     }
+
+    children.sort((a, b) => {
+      const typeOrder: Record<DiffType, number> = {
+        'removed': 0,
+        'modified': 1,
+        'added': 2,
+        'unchanged': 3
+      };
+      return typeOrder[a.type] - typeOrder[b.type];
+    });
 
     return {
       key: String(key),
@@ -133,16 +295,25 @@ export class JsonDiffService {
       type: hasChanges ? 'modified' : 'unchanged',
       value: newObj,
       oldValue: oldObj,
-      children,
-      isExpanded: true
+      children: children.length > 0 ? children : undefined,
+      isExpanded: false,
+      depth,
+      hasNestedChanges
     };
   }
 
-  private compareArrays(oldArr: any[], newArr: any[], path: string, key: string | number): DiffNode {
+  private compareArrays(
+    oldArr: any[], 
+    newArr: any[], 
+    path: string, 
+    key: string | number, 
+    depth: number
+  ): DiffNode {
     const fullPath = this.buildPath(path, key);
     const maxLen = Math.max(oldArr.length, newArr.length);
     const children: DiffNode[] = [];
     let hasChanges = false;
+    let hasNestedChanges = false;
 
     for (let i = 0; i < maxLen; i++) {
       const oldHas = i < oldArr.length;
@@ -150,26 +321,33 @@ export class JsonDiffService {
 
       if (!oldHas) {
         hasChanges = true;
+        hasNestedChanges = true;
         children.push({
           key: String(i),
           path: this.buildPath(fullPath, i),
           type: 'added',
           value: newArr[i],
-          isExpanded: true
+          isExpanded: false,
+          depth: depth + 1,
+          hasNestedChanges: false
         });
       } else if (!newHas) {
         hasChanges = true;
+        hasNestedChanges = true;
         children.push({
           key: String(i),
           path: this.buildPath(fullPath, i),
           type: 'removed',
           value: oldArr[i],
-          isExpanded: true
+          isExpanded: false,
+          depth: depth + 1,
+          hasNestedChanges: false
         });
       } else {
-        const child = this.compareValues(oldArr[i], newArr[i], fullPath, i);
-        if (child.type !== 'unchanged') {
+        const child = this.compareValues(oldArr[i], newArr[i], fullPath, i, depth + 1);
+        if (child.type !== 'unchanged' || child.hasNestedChanges) {
           hasChanges = true;
+          hasNestedChanges = true;
         }
         children.push(child);
       }
@@ -181,28 +359,43 @@ export class JsonDiffService {
       type: hasChanges ? 'modified' : 'unchanged',
       value: newArr,
       oldValue: oldArr,
-      children,
-      isExpanded: true
+      children: children.length > 0 ? children : undefined,
+      isExpanded: false,
+      depth,
+      hasNestedChanges
     };
   }
 
-  private countChanges(node: DiffNode | null): { added: number; removed: number; modified: number; unchanged: number } {
+  private applyExpandStrategy(node: DiffNode, maxAutoExpandDepth: number): void {
+    node.isExpanded = this.shouldExpandNode(node, maxAutoExpandDepth);
+    
+    if (node.children) {
+      for (const child of node.children) {
+        this.applyExpandStrategy(child, maxAutoExpandDepth);
+      }
+    }
+  }
+
+  private countChanges(node: DiffNode | null): { 
+    added: number; 
+    removed: number; 
+    modified: number; 
+    unchanged: number 
+  } {
     const result = { added: 0, removed: 0, modified: 0, unchanged: 0 };
     
     if (!node) return result;
 
+    const hasChildren = node.children && node.children.length > 0;
+
     if (node.type === 'added') {
-      result.added++;
+      if (!hasChildren) result.added++;
     } else if (node.type === 'removed') {
-      result.removed++;
+      if (!hasChildren) result.removed++;
     } else if (node.type === 'modified') {
-      if (!node.children || node.children.length === 0) {
-        result.modified++;
-      }
+      if (!hasChildren) result.modified++;
     } else {
-      if (!node.children || node.children.length === 0) {
-        result.unchanged++;
-      }
+      if (!hasChildren) result.unchanged++;
     }
 
     if (node.children) {
@@ -218,57 +411,6 @@ export class JsonDiffService {
     return result;
   }
 
-  compare(oldJson: any, newJson: any): DiffResult {
-    if (oldJson === undefined && newJson === undefined) {
-      return {
-        left: null,
-        right: null,
-        summary: { added: 0, removed: 0, modified: 0, unchanged: 0 }
-      };
-    }
-
-    if (oldJson === undefined) {
-      const rightNode: DiffNode = {
-        key: '',
-        path: '',
-        type: 'added',
-        value: newJson,
-        isExpanded: true
-      };
-      const summary = this.countChanges(rightNode);
-      return {
-        left: null,
-        right: rightNode,
-        summary
-      };
-    }
-
-    if (newJson === undefined) {
-      const leftNode: DiffNode = {
-        key: '',
-        path: '',
-        type: 'removed',
-        value: oldJson,
-        isExpanded: true
-      };
-      const summary = this.countChanges(leftNode);
-      return {
-        left: leftNode,
-        right: null,
-        summary
-      };
-    }
-
-    const result = this.compareValues(oldJson, newJson, '', '');
-    const summary = this.countChanges(result);
-
-    return {
-      left: result,
-      right: result,
-      summary
-    };
-  }
-
   parseJson(text: string): any {
     if (!text || text.trim() === '') {
       return undefined;
@@ -279,5 +421,25 @@ export class JsonDiffService {
   formatJson(value: any, indent: number = 2): string {
     if (value === undefined) return '';
     return JSON.stringify(value, null, indent);
+  }
+
+  setNodeExpanded(node: DiffNode, expanded: boolean, recursive: boolean = false): void {
+    node.isExpanded = expanded;
+    if (recursive && node.children) {
+      for (const child of node.children) {
+        this.setNodeExpanded(child, expanded, recursive);
+      }
+    }
+  }
+
+  expandToDepth(node: DiffNode, targetDepth: number): void {
+    if (node.depth <= targetDepth) {
+      node.isExpanded = true;
+    }
+    if (node.children) {
+      for (const child of node.children) {
+        this.expandToDepth(child, targetDepth);
+      }
+    }
   }
 }

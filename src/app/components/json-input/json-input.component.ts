@@ -1,9 +1,11 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { SampleDataService } from '../../services/sample-data.service';
 
 @Component({
   selector: 'app-json-input',
-  standalone: false,
+  standalone: true,
+  imports: [CommonModule],
   templateUrl: './json-input.component.html',
   styleUrls: ['./json-input.component.css']
 })
