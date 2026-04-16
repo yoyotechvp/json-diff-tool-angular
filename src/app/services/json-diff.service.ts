@@ -12,6 +12,7 @@ export interface DiffNode {
   isExpanded: boolean;
   depth: number;
   hasNestedChanges: boolean;
+  isPlaceholder?: boolean;
 }
 
 export interface DiffResult {
@@ -103,8 +104,21 @@ export class JsonDiffService {
     const summary = this.countChanges(unifiedResult);
     const compareTime = performance.now() - startTime;
 
-    const leftResult = unifiedResult ? this.cloneNodeForSide(unifiedResult, 'left') : null;
-    const rightResult = unifiedResult ? this.cloneNodeForSide(unifiedResult, 'right') : null;
+    let leftResult: DiffNode | null = null;
+    let rightResult: DiffNode | null = null;
+
+    if (unifiedResult) {
+      if (unifiedResult.type === 'added') {
+        leftResult = null;
+        rightResult = this.cloneNodeForSide(unifiedResult, 'right');
+      } else if (unifiedResult.type === 'removed') {
+        leftResult = this.cloneNodeForSide(unifiedResult, 'left');
+        rightResult = null;
+      } else {
+        leftResult = this.cloneNodeForSide(unifiedResult, 'left');
+        rightResult = this.cloneNodeForSide(unifiedResult, 'right');
+      }
+    }
 
     return {
       left: leftResult,
@@ -122,6 +136,9 @@ export class JsonDiffService {
   }
 
   private cloneNodeForSide(node: DiffNode, side: 'left' | 'right'): DiffNode {
+    const isPlaceholder = (side === 'left' && node.type === 'added') || 
+                          (side === 'right' && node.type === 'removed');
+
     const cloned: DiffNode = {
       key: node.key,
       path: node.path,
@@ -131,19 +148,12 @@ export class JsonDiffService {
       isExpanded: node.isExpanded,
       depth: node.depth,
       hasNestedChanges: node.hasNestedChanges,
+      isPlaceholder: isPlaceholder,
       children: undefined
     };
 
     if (node.children) {
-      cloned.children = node.children
-        .filter(child => {
-          if (side === 'left') {
-            return child.type !== 'added';
-          } else {
-            return child.type !== 'removed';
-          }
-        })
-        .map(child => this.cloneNodeForSide(child, side));
+      cloned.children = node.children.map(child => this.cloneNodeForSide(child, side));
     }
 
     return cloned;

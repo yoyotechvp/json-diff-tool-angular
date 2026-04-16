@@ -193,3 +193,13 @@
 :host ::ng-deep .diff-modified .node-value {
   color: #ca8a04;
 }
+
+.tree-node.placeholder .node-row {
+  min-height: 24px;
+  background-color: rgba(249, 250, 251, 0.5);
+}
+
+.placeholder-content {
+  flex: 1;
+  min-height: 16px;
+}

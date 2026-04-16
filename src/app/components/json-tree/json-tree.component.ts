@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DiffNode } from '../../services/json-diff.service';
 
@@ -10,12 +10,19 @@ import { DiffNode } from '../../services/json-diff.service';
   styleUrls: ['./json-tree.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class JsonTreeComponent {
+export class JsonTreeComponent implements OnChanges {
   @Input() node!: DiffNode;
   @Input() level: number = 0;
   @Input() side: 'left' | 'right' = 'right';
+  @Input() treeVersion: number = 0;
 
   constructor(private cdr: ChangeDetectorRef) {}
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['treeVersion'] && !changes['treeVersion'].firstChange) {
+      this.cdr.markForCheck();
+    }
+  }
 
   get hasChildren(): boolean {
     return !!(this.node.children && this.node.children.length > 0);

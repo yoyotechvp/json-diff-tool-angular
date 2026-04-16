@@ -1,66 +1,86 @@
-<div class="tree-node" [class]="nodeClass" [ngStyle]="getIndentStyle()">
-  <div class="node-row">
-    @if (isExpandable) {
-      <span class="expand-icon" (click)="toggleExpand()">
-        @if (node.isExpanded) {
-          ▼
-        } @else {
-          ▶
-        }
-      </span>
-    } @else {
+@if (node.isPlaceholder) {
+  <div class="tree-node placeholder" [ngStyle]="getIndentStyle()">
+    <div class="node-row">
       <span class="expand-icon placeholder"></span>
-    }
-    
-    <span class="node-key" [class.array-index]="isArrayIndex()">
-      @if (displayKey) {
-        {{ displayKey }}:
-      }
-    </span>
-    
-    @if (hasChildren) {
-      <span class="node-value-preview" (click)="toggleExpand()">
-        {{ valuePreview }}
-      </span>
-      @if (node.children?.length) {
-        <span class="action-buttons">
-          <button class="btn-toggle-all" (click)="toggleChildren(true)" title="展开此节点下所有">
-            [+]
-          </button>
-          <button class="btn-toggle-all" (click)="toggleChildren(false)" title="折叠此节点下所有">
-            [-]
-          </button>
-        </span>
-      }
-    } @else {
-      <span class="node-value-container">
-        @if (showValueDiff) {
-          <span class="value-diff-wrapper">
-            <span class="old-value" title="旧值">{{ oldValuePreview }}</span>
-            <span class="diff-arrow">→</span>
-            <span class="new-value" title="新值">{{ newValuePreview }}</span>
-          </span>
-        } @else {
-          <span class="node-value" [class.diff-added]="node.type === 'added'"
-            [class.diff-removed]="node.type === 'removed'"
-            [class.diff-modified]="node.type === 'modified'"
-            [class.diff-unchanged]="node.type === 'unchanged'">
-            {{ valuePreview }}
-          </span>
+      <span class="placeholder-content"></span>
+    </div>
+    @if (hasChildren && node.isExpanded) {
+      <div class="node-children">
+        @for (child of node.children; track child.path) {
+          <app-json-tree
+            [node]="child"
+            [level]="level + 1"
+            [side]="side">
+          </app-json-tree>
         }
-      </span>
+      </div>
     }
   </div>
-  
-  @if (hasChildren && node.isExpanded) {
-    <div class="node-children">
-      @for (child of node.children; track child.path) {
-        <app-json-tree
-          [node]="child"
-          [level]="level + 1"
-          [side]="side">
-        </app-json-tree>
+} @else {
+  <div class="tree-node" [class]="nodeClass" [ngStyle]="getIndentStyle()">
+    <div class="node-row">
+      @if (isExpandable) {
+        <span class="expand-icon" (click)="toggleExpand()">
+          @if (node.isExpanded) {
+            ▼
+          } @else {
+            ▶
+          }
+        </span>
+      } @else {
+        <span class="expand-icon placeholder"></span>
+      }
+      
+      <span class="node-key" [class.array-index]="isArrayIndex()">
+        @if (displayKey) {
+          {{ displayKey }}:
+        }
+      </span>
+      
+      @if (hasChildren) {
+        <span class="node-value-preview" (click)="toggleExpand()">
+          {{ valuePreview }}
+        </span>
+        @if (node.children?.length) {
+          <span class="action-buttons">
+            <button class="btn-toggle-all" (click)="toggleChildren(true)" title="展开此节点下所有">
+              [+]
+            </button>
+            <button class="btn-toggle-all" (click)="toggleChildren(false)" title="折叠此节点下所有">
+              [-]
+            </button>
+          </span>
+        }
+      } @else {
+        <span class="node-value-container">
+          @if (showValueDiff) {
+            <span class="value-diff-wrapper">
+              <span class="old-value" title="旧值">{{ oldValuePreview }}</span>
+              <span class="diff-arrow">→</span>
+              <span class="new-value" title="新值">{{ newValuePreview }}</span>
+            </span>
+          } @else {
+            <span class="node-value" [class.diff-added]="node.type === 'added'"
+              [class.diff-removed]="node.type === 'removed'"
+              [class.diff-modified]="node.type === 'modified'"
+              [class.diff-unchanged]="node.type === 'unchanged'">
+              {{ valuePreview }}
+            </span>
+          }
+        </span>
       }
     </div>
-  }
-</div>
+    
+    @if (hasChildren && node.isExpanded) {
+      <div class="node-children">
+        @for (child of node.children; track child.path) {
+          <app-json-tree
+            [node]="child"
+            [level]="level + 1"
+            [side]="side">
+          </app-json-tree>
+        }
+      </div>
+    }
+  </div>
+}

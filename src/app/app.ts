@@ -24,6 +24,7 @@ export class App implements OnInit {
   readonly diffResult = signal<DiffResult | null>(null);
   readonly showDiff = signal(false);
   readonly viewMode = signal<'split' | 'unified'>('split');
+  readonly treeVersion = signal(0);
 
   readonly summary = computed(() => {
     const result = this.diffResult();
@@ -103,7 +104,7 @@ export class App implements OnInit {
       this.jsonDiffService.setNodeExpanded(result.right, true, true);
     }
     
-    this.diffResult.set({ ...result });
+    this.treeVersion.update(v => v + 1);
     this.cdr.markForCheck();
   }
 
@@ -118,7 +119,7 @@ export class App implements OnInit {
       this.jsonDiffService.setNodeExpanded(result.right, false, true);
     }
     
-    this.diffResult.set({ ...result });
+    this.treeVersion.update(v => v + 1);
     this.cdr.markForCheck();
   }
 

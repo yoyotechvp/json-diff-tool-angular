@@ -126,6 +126,7 @@
                       [node]="diffResult()!.left!"
                       [level]="0"
                       [side]="'left'"
+                      [treeVersion]="treeVersion()"
                     ></app-json-tree>
                   } @else {
                     <div class="empty-result">
@@ -145,6 +146,7 @@
                       [node]="diffResult()!.right!"
                       [level]="0"
                       [side]="'right'"
+                      [treeVersion]="treeVersion()"
                     ></app-json-tree>
                   } @else {
                     <div class="empty-result">
@@ -163,6 +165,7 @@
                   [node]="diffResult()!.left!"
                   [level]="0"
                   [side]="'right'"
+                  [treeVersion]="treeVersion()"
                 ></app-json-tree>
               }
             </div>
