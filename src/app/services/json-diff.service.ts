@@ -60,7 +60,7 @@ export class JsonDiffService {
     return node.type !== 'unchanged' || node.hasNestedChanges;
   }
 
-  compare(oldJson: any, newJson: any, maxAutoExpandDepth: number = 3): DiffResult {
+  compare(oldJson: any, newJson: any, maxAutoExpandDepth: number = 3, showOnlyChanges: boolean = false): DiffResult {
     const startTime = performance.now();
     
     if (oldJson === undefined && newJson === undefined) {
@@ -108,15 +108,31 @@ export class JsonDiffService {
     let rightResult: DiffNode | null = null;
 
     if (unifiedResult) {
-      if (unifiedResult.type === 'added') {
-        leftResult = null;
-        rightResult = this.cloneNodeForSide(unifiedResult, 'right');
-      } else if (unifiedResult.type === 'removed') {
-        leftResult = this.cloneNodeForSide(unifiedResult, 'left');
-        rightResult = null;
+      if (showOnlyChanges) {
+        const filteredNode = this.filterChangedNodes(unifiedResult);
+        if (filteredNode) {
+          if (unifiedResult.type === 'added') {
+            leftResult = null;
+            rightResult = this.cloneNodeForSide(filteredNode, 'right');
+          } else if (unifiedResult.type === 'removed') {
+            leftResult = this.cloneNodeForSide(filteredNode, 'left');
+            rightResult = null;
+          } else {
+            leftResult = this.cloneNodeForSide(filteredNode, 'left');
+            rightResult = this.cloneNodeForSide(filteredNode, 'right');
+          }
+        }
       } else {
-        leftResult = this.cloneNodeForSide(unifiedResult, 'left');
-        rightResult = this.cloneNodeForSide(unifiedResult, 'right');
+        if (unifiedResult.type === 'added') {
+          leftResult = null;
+          rightResult = this.cloneNodeForSide(unifiedResult, 'right');
+        } else if (unifiedResult.type === 'removed') {
+          leftResult = this.cloneNodeForSide(unifiedResult, 'left');
+          rightResult = null;
+        } else {
+          leftResult = this.cloneNodeForSide(unifiedResult, 'left');
+          rightResult = this.cloneNodeForSide(unifiedResult, 'right');
+        }
       }
     }
 
@@ -133,6 +149,34 @@ export class JsonDiffService {
         maxDepth
       }
     };
+  }
+
+  filterChangedNodes(node: DiffNode): DiffNode | null {
+    const hasChanges = node.type !== 'unchanged' || node.hasNestedChanges;
+    
+    if (!hasChanges) {
+      return null;
+    }
+
+    const cloned: DiffNode = {
+      ...node,
+      children: undefined
+    };
+
+    if (node.children) {
+      const filteredChildren: DiffNode[] = [];
+      for (const child of node.children) {
+        const filteredChild = this.filterChangedNodes(child);
+        if (filteredChild) {
+          filteredChildren.push(filteredChild);
+        }
+      }
+      if (filteredChildren.length > 0) {
+        cloned.children = filteredChildren;
+      }
+    }
+
+    return cloned;
   }
 
   private cloneNodeForSide(node: DiffNode, side: 'left' | 'right'): DiffNode {

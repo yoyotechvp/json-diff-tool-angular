@@ -1,9 +1,15 @@
-import { Component, OnInit, ChangeDetectorRef, signal, computed } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { JsonTreeComponent } from './components/json-tree/json-tree.component';
 import { JsonInputComponent } from './components/json-input/json-input.component';
 import { JsonDiffService, DiffResult, DiffNode } from './services/json-diff.service';
 import { SampleDataService } from './services/sample-data.service';
+
+interface RawDiffData {
+  leftJson: string;
+  rightJson: string;
+  maxAutoExpandDepth: number;
+}
 
 @Component({
   selector: 'app-root',
@@ -21,6 +27,8 @@ export class App implements OnInit {
   
   readonly leftJson = signal('');
   readonly rightJson = signal('');
+  readonly rawDiffData = signal<RawDiffData | null>(null);
+  readonly showOnlyChanges = signal(false);
   readonly diffResult = signal<DiffResult | null>(null);
   readonly showDiff = signal(false);
   readonly viewMode = signal<'split' | 'unified'>('split');
@@ -40,7 +48,15 @@ export class App implements OnInit {
     private jsonDiffService: JsonDiffService,
     private sampleDataService: SampleDataService,
     private cdr: ChangeDetectorRef
-  ) {}
+  ) {
+    effect(() => {
+      const rawData = this.rawDiffData();
+      const onlyChanges = this.showOnlyChanges();
+      if (rawData && this.showDiff()) {
+        this.doCompare(rawData);
+      }
+    });
+  }
 
   ngOnInit(): void {
     const sample = this.sampleDataService.getSample(0);
@@ -63,19 +79,42 @@ export class App implements OnInit {
     this.rightJson.set(data.right);
     this.showDiff.set(false);
     this.diffResult.set(null);
+    this.rawDiffData.set(null);
   }
 
   compareJson(): void {
     try {
-      const leftObj = this.jsonDiffService.parseJson(this.leftJson());
-      const rightObj = this.jsonDiffService.parseJson(this.rightJson());
+      const leftText = this.leftJson();
+      const rightText = this.rightJson();
       
-      const result = this.jsonDiffService.compare(leftObj, rightObj, 2);
-      this.diffResult.set(result);
+      this.rawDiffData.set({
+        leftJson: leftText,
+        rightJson: rightText,
+        maxAutoExpandDepth: 2
+      });
+      
+      this.doCompare(this.rawDiffData()!);
       this.showDiff.set(true);
     } catch (e) {
       alert(`比较失败: ${(e as Error).message}`);
     }
+  }
+
+  private doCompare(rawData: RawDiffData): void {
+    const leftObj = this.jsonDiffService.parseJson(rawData.leftJson);
+    const rightObj = this.jsonDiffService.parseJson(rawData.rightJson);
+    
+    const result = this.jsonDiffService.compare(
+      leftObj, 
+      rightObj, 
+      rawData.maxAutoExpandDepth,
+      this.showOnlyChanges()
+    );
+    this.diffResult.set(result);
+  }
+
+  toggleShowOnlyChanges(): void {
+    this.showOnlyChanges.update(v => !v);
   }
 
   swapJson(): void {
@@ -84,6 +123,7 @@ export class App implements OnInit {
     this.rightJson.set(temp);
     this.showDiff.set(false);
     this.diffResult.set(null);
+    this.rawDiffData.set(null);
   }
 
   clearAll(): void {
@@ -91,6 +131,7 @@ export class App implements OnInit {
     this.rightJson.set('');
     this.showDiff.set(false);
     this.diffResult.set(null);
+    this.rawDiffData.set(null);
   }
 
   expandAll(): void {
@@ -98,14 +139,13 @@ export class App implements OnInit {
     if (!result) return;
 
     if (result.left) {
-      this.jsonDiffService.setNodeExpanded(result.left, true, true);
+      this.setExpandedFast(result.left, true);
     }
     if (result.right) {
-      this.jsonDiffService.setNodeExpanded(result.right, true, true);
+      this.setExpandedFast(result.right, true);
     }
     
     this.treeVersion.update(v => v + 1);
-    this.cdr.markForCheck();
   }
 
   collapseAll(): void {
@@ -113,14 +153,28 @@ export class App implements OnInit {
     if (!result) return;
 
     if (result.left) {
-      this.jsonDiffService.setNodeExpanded(result.left, false, true);
+      this.setExpandedFast(result.left, false);
     }
     if (result.right) {
-      this.jsonDiffService.setNodeExpanded(result.right, false, true);
+      this.setExpandedFast(result.right, false);
     }
     
     this.treeVersion.update(v => v + 1);
-    this.cdr.markForCheck();
+  }
+
+  private setExpandedFast(node: DiffNode, expanded: boolean): void {
+    const stack: DiffNode[] = [node];
+    
+    while (stack.length > 0) {
+      const current = stack.pop()!;
+      current.isExpanded = expanded;
+      
+      if (current.children && current.children.length > 0) {
+        for (let i = current.children.length - 1; i >= 0; i--) {
+          stack.push(current.children[i]);
+        }
+      }
+    }
   }
 
   setViewMode(mode: 'split' | 'unified'): void {

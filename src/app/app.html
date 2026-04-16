@@ -99,6 +99,13 @@
             </div>
             
             <div class="expand-toggle">
+              <button 
+                class="btn-secondary" 
+                [class.active]="showOnlyChanges()"
+                (click)="toggleShowOnlyChanges()"
+              >
+                只显示变更
+              </button>
               <button class="btn-secondary" (click)="expandAll()">
                 全部展开
               </button>
