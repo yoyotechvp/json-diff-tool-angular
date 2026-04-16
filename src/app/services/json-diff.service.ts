@@ -71,7 +71,7 @@ export class JsonDiffService {
       };
     }
 
-    let result: DiffNode | null = null;
+    let unifiedResult: DiffNode | null = null;
     let maxDepth = 0;
     let nodeCount = 0;
 
@@ -88,24 +88,27 @@ export class JsonDiffService {
     };
 
     if (oldJson === undefined) {
-      result = this.createAddedNode(newJson, '', 0);
+      unifiedResult = this.createAddedNode(newJson, '', 0);
     } else if (newJson === undefined) {
-      result = this.createRemovedNode(oldJson, '', 0);
+      unifiedResult = this.createRemovedNode(oldJson, '', 0);
     } else {
-      result = this.compareValues(oldJson, newJson, '', '', 0);
+      unifiedResult = this.compareValues(oldJson, newJson, '', '', 0);
     }
 
-    if (result) {
-      this.applyExpandStrategy(result, maxAutoExpandDepth);
-      countNodes(result);
+    if (unifiedResult) {
+      this.applyExpandStrategy(unifiedResult, maxAutoExpandDepth);
+      countNodes(unifiedResult);
     }
 
-    const summary = this.countChanges(result);
+    const summary = this.countChanges(unifiedResult);
     const compareTime = performance.now() - startTime;
 
+    const leftResult = unifiedResult ? this.cloneNodeForSide(unifiedResult, 'left') : null;
+    const rightResult = unifiedResult ? this.cloneNodeForSide(unifiedResult, 'right') : null;
+
     return {
-      left: result,
-      right: result,
+      left: leftResult,
+      right: rightResult,
       summary: {
         ...summary,
         total: summary.added + summary.removed + summary.modified + summary.unchanged
@@ -116,6 +119,34 @@ export class JsonDiffService {
         maxDepth
       }
     };
+  }
+
+  private cloneNodeForSide(node: DiffNode, side: 'left' | 'right'): DiffNode {
+    const cloned: DiffNode = {
+      key: node.key,
+      path: node.path,
+      type: node.type,
+      value: node.value,
+      oldValue: node.oldValue,
+      isExpanded: node.isExpanded,
+      depth: node.depth,
+      hasNestedChanges: node.hasNestedChanges,
+      children: undefined
+    };
+
+    if (node.children) {
+      cloned.children = node.children
+        .filter(child => {
+          if (side === 'left') {
+            return child.type !== 'added';
+          } else {
+            return child.type !== 'removed';
+          }
+        })
+        .map(child => this.cloneNodeForSide(child, side));
+    }
+
+    return cloned;
   }
 
   private createAddedNode(value: any, path: string, depth: number): DiffNode {
