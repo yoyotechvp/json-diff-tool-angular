@@ -14,8 +14,6 @@ export class JsonTreeComponent {
   @Input() node!: DiffNode;
   @Input() level: number = 0;
   @Input() side: 'left' | 'right' = 'right';
-  @Output() toggle = new EventEmitter<void>();
-  @Output() toggleAll = new EventEmitter<{ expand: boolean; node: DiffNode }>();
 
   constructor(private cdr: ChangeDetectorRef) {}
 
@@ -84,23 +82,19 @@ export class JsonTreeComponent {
   }
 
   toggleExpand(): void {
+    if (!this.hasChildren) return;
     this.node.isExpanded = !this.node.isExpanded;
     this.cdr.markForCheck();
-    this.toggle.emit();
   }
 
   toggleChildren(expand: boolean): void {
-    this.toggleAll.emit({ expand, node: this.node });
-  }
-
-  onChildToggleAll(event: { expand: boolean; node: DiffNode }): void {
-    this.setExpandRecursive(event.node, event.expand);
+    this.setExpandRecursive(this.node, expand);
     this.cdr.markForCheck();
   }
 
   private setExpandRecursive(node: DiffNode, expand: boolean): void {
-    node.isExpanded = expand;
-    if (node.children) {
+    if (node.children && node.children.length > 0) {
+      node.isExpanded = expand;
       for (const child of node.children) {
         this.setExpandRecursive(child, expand);
       }

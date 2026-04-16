@@ -94,23 +94,31 @@ export class App implements OnInit {
 
   expandAll(): void {
     const result = this.diffResult();
-    if (result?.left) {
+    if (!result) return;
+
+    if (result.left) {
       this.jsonDiffService.setNodeExpanded(result.left, true, true);
     }
-    if (result?.right && result.right !== result.left) {
+    if (result.right) {
       this.jsonDiffService.setNodeExpanded(result.right, true, true);
     }
+    
+    this.diffResult.set({ ...result });
     this.cdr.markForCheck();
   }
 
   collapseAll(): void {
     const result = this.diffResult();
-    if (result?.left) {
+    if (!result) return;
+
+    if (result.left) {
       this.jsonDiffService.setNodeExpanded(result.left, false, true);
     }
-    if (result?.right && result.right !== result.left) {
+    if (result.right) {
       this.jsonDiffService.setNodeExpanded(result.right, false, true);
     }
+    
+    this.diffResult.set({ ...result });
     this.cdr.markForCheck();
   }
 
