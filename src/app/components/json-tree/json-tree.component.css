@@ -1,55 +1,69 @@
 .tree-node {
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .node-row {
   display: flex;
   align-items: center;
-  padding: 2px 4px;
-  border-radius: 2px;
+  padding: 4px 8px;
+  border-radius: 3px;
   cursor: default;
-  min-height: 20px;
+  min-height: 24px;
+  transition: background-color 0.15s ease;
 }
 
 .node-row:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: rgba(0, 0, 0, 0.03);
 }
 
-.diff-added .node-row {
-  background-color: rgba(34, 197, 94, 0.1);
+.diff-added > .node-row {
+  background-color: rgba(34, 197, 94, 0.12);
   border-left: 3px solid #22c55e;
 }
 
-.diff-removed .node-row {
-  background-color: rgba(239, 68, 68, 0.1);
+.diff-removed > .node-row {
+  background-color: rgba(239, 68, 68, 0.12);
   border-left: 3px solid #ef4444;
 }
 
-.diff-modified .node-row {
-  background-color: rgba(245, 158, 11, 0.1);
+.diff-modified > .node-row {
+  background-color: rgba(245, 158, 11, 0.12);
   border-left: 3px solid #f59e0b;
 }
 
-.diff-unchanged .node-row {
+.diff-unchanged > .node-row {
   border-left: 3px solid transparent;
 }
 
+.diff-added > .node-row:hover {
+  background-color: rgba(34, 197, 94, 0.2);
+}
+
+.diff-removed > .node-row:hover {
+  background-color: rgba(239, 68, 68, 0.2);
+}
+
+.diff-modified > .node-row:hover {
+  background-color: rgba(245, 158, 11, 0.2);
+}
+
 .expand-icon {
-  width: 16px;
-  min-width: 16px;
+  width: 18px;
+  min-width: 18px;
   cursor: pointer;
-  color: #666;
-  font-size: 10px;
+  color: #6b7280;
+  font-size: 9px;
   user-select: none;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: color 0.15s ease;
 }
 
 .expand-icon:hover {
-  color: #333;
+  color: #374151;
 }
 
 .expand-icon.placeholder {
@@ -59,7 +73,7 @@
 .node-key {
   color: #0550ae;
   font-weight: 500;
-  margin-right: 4px;
+  margin-right: 6px;
   white-space: nowrap;
 }
 
@@ -69,7 +83,7 @@
 }
 
 .node-value-preview {
-  color: #666;
+  color: #6b7280;
   font-style: italic;
   cursor: pointer;
 }
@@ -78,62 +92,104 @@
   text-decoration: underline;
 }
 
+.node-value-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.value-diff-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 6px;
+  background-color: rgba(245, 158, 11, 0.15);
+  border-radius: 4px;
+}
+
+.old-value {
+  color: #dc2626;
+  text-decoration: line-through;
+  opacity: 0.8;
+}
+
+.new-value {
+  color: #16a34a;
+  font-weight: 500;
+}
+
+.diff-arrow {
+  color: #9ca3af;
+  font-weight: 600;
+}
+
 .node-value {
   white-space: nowrap;
 }
 
-.node-value .string-value {
-  color: #0a3069;
+.node-value.diff-added {
+  color: #16a34a;
+  font-weight: 500;
 }
 
-.node-value .number-value {
-  color: #0550ae;
+.node-value.diff-removed {
+  color: #dc2626;
+  text-decoration: line-through;
+  opacity: 0.8;
 }
 
-.node-value .boolean-value {
-  color: #cf222e;
+.node-value.diff-modified {
+  color: #ca8a04;
 }
 
-.node-value .null-value {
-  color: #6e7781;
-  font-style: italic;
+.node-value.diff-unchanged {
+  color: #374151;
 }
 
 .action-buttons {
-  margin-left: 8px;
+  margin-left: 12px;
   display: flex;
-  gap: 4px;
+  gap: 6px;
+  opacity: 0.5;
+  transition: opacity 0.15s ease;
+}
+
+.node-row:hover .action-buttons {
+  opacity: 1;
 }
 
 .btn-toggle-all {
-  background: none;
-  border: 1px solid #d0d7de;
+  background: #fff;
+  border: 1px solid #d1d5db;
   border-radius: 3px;
-  padding: 0 4px;
+  padding: 0 6px;
   font-size: 10px;
   cursor: pointer;
-  color: #656d76;
+  color: #6b7280;
   font-family: inherit;
+  transition: all 0.15s ease;
 }
 
 .btn-toggle-all:hover {
   background-color: #f3f4f6;
   border-color: #9ca3af;
-  color: #111827;
+  color: #374151;
 }
 
 .node-children {
-  margin-left: 8px;
+  margin-left: 12px;
+  border-left: 1px dashed #e5e7eb;
+  padding-left: 4px;
 }
 
-:host ::ng-deep .diff-added {
-  color: #1a5f1a;
+:host ::ng-deep .diff-added .node-value {
+  color: #16a34a;
 }
 
-:host ::ng-deep .diff-removed {
-  color: #7a2424;
+:host ::ng-deep .diff-removed .node-value {
+  color: #dc2626;
 }
 
-:host ::ng-deep .diff-modified {
-  color: #7a5c00;
+:host ::ng-deep .diff-modified .node-value {
+  color: #ca8a04;
 }

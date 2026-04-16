@@ -1,5 +1,5 @@
 <div class="tree-node" [class]="nodeClass" [ngStyle]="getIndentStyle()">
-  <div class="node-row" (click)="$event.stopPropagation()">
+  <div class="node-row">
     @if (isExpandable) {
       <span class="expand-icon" (click)="toggleExpand()">
         @if (node.isExpanded) {
@@ -24,17 +24,30 @@
       </span>
       @if (node.children?.length) {
         <span class="action-buttons">
-          <button class="btn-toggle-all" (click)="toggleChildren(true)" title="全部展开">
+          <button class="btn-toggle-all" (click)="toggleChildren(true)" title="展开此节点下所有">
             [+]
           </button>
-          <button class="btn-toggle-all" (click)="toggleChildren(false)" title="全部折叠">
+          <button class="btn-toggle-all" (click)="toggleChildren(false)" title="折叠此节点下所有">
             [-]
           </button>
         </span>
       }
     } @else {
-      <span class="node-value">
-        {{ valuePreview }}
+      <span class="node-value-container">
+        @if (showValueDiff) {
+          <span class="value-diff-wrapper">
+            <span class="old-value" title="旧值">{{ oldValuePreview }}</span>
+            <span class="diff-arrow">→</span>
+            <span class="new-value" title="新值">{{ newValuePreview }}</span>
+          </span>
+        } @else {
+          <span class="node-value" [class.diff-added]="node.type === 'added'"
+            [class.diff-removed]="node.type === 'removed'"
+            [class.diff-modified]="node.type === 'modified'"
+            [class.diff-unchanged]="node.type === 'unchanged'">
+            {{ valuePreview }}
+          </span>
+        }
       </span>
     }
   </div>
@@ -46,8 +59,7 @@
           [node]="child"
           [level]="level + 1"
           [side]="side"
-          (toggle)="toggle.emit()"
-          (toggleAll)="toggleAll.emit($event)">
+          (toggleAll)="onChildToggleAll($event)">
         </app-json-tree>
       }
     </div>

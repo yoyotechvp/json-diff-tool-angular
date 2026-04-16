@@ -7,13 +7,13 @@
   </header>
 
   <main class="main-content">
-    @if (!showDiff) {
+    @if (!showDiff()) {
       <div class="input-section">
         <div class="input-row">
           <div class="input-panel">
             <app-json-input
               [label]="'原始 JSON (Left)'"
-              [value]="leftJson"
+              [value]="leftJson()"
               [side]="'left'"
               (valueChange)="onLeftJsonChange($event)"
               (loadSample)="onLoadSample($event)"
@@ -29,7 +29,7 @@
           <div class="input-panel">
             <app-json-input
               [label]="'目标 JSON (Right)'"
-              [value]="rightJson"
+              [value]="rightJson()"
               [side]="'right'"
               (valueChange)="onRightJsonChange($event)"
               (loadSample)="onLoadSample($event)"
@@ -48,7 +48,7 @@
       </div>
     }
     
-    @if (showDiff && diffResult) {
+    @if (showDiff() && diffResult()) {
       <div class="result-section">
         <div class="result-header">
           <div class="result-summary">
@@ -56,35 +56,42 @@
             <div class="summary-stats">
               <span class="stat stat-added">
                 <span class="stat-icon">+</span>
-                新增: {{ getSummary().added }}
+                新增: {{ summary().added }}
               </span>
               <span class="stat stat-removed">
                 <span class="stat-icon">-</span>
-                删除: {{ getSummary().removed }}
+                删除: {{ summary().removed }}
               </span>
               <span class="stat stat-modified">
                 <span class="stat-icon">~</span>
-                修改: {{ getSummary().modified }}
+                修改: {{ summary().modified }}
               </span>
               <span class="stat stat-unchanged">
                 <span class="stat-icon">=</span>
-                相同: {{ getSummary().unchanged }}
+                相同: {{ summary().unchanged }}
               </span>
             </div>
+            @if (performance().nodeCount > 0) {
+              <div class="performance-info">
+                <span class="perf-item">节点数: {{ performance().nodeCount }}</span>
+                <span class="perf-item">最大深度: {{ performance().maxDepth }}</span>
+                <span class="perf-item">耗时: {{ performance().compareTime.toFixed(2) }}ms</span>
+              </div>
+            }
           </div>
           
           <div class="result-actions">
             <div class="view-toggle">
               <button 
                 class="btn-toggle" 
-                [class.active]="viewMode === 'split'"
+                [class.active]="viewMode() === 'split'"
                 (click)="setViewMode('split')"
               >
                 分屏视图
               </button>
               <button 
                 class="btn-toggle" 
-                [class.active]="viewMode === 'unified'"
+                [class.active]="viewMode() === 'unified'"
                 (click)="setViewMode('unified')"
               >
                 统一视图
@@ -100,23 +107,23 @@
               </button>
             </div>
             
-            <button class="btn-back" (click)="showDiff = false">
+            <button class="btn-back" (click)="showDiff.set(false)">
               ← 返回编辑
             </button>
           </div>
         </div>
         
-        <div class="result-content" [class.unified-mode]="viewMode === 'unified'">
-          @if (viewMode === 'split') {
+        <div class="result-content" [class.unified-mode]="viewMode() === 'unified'">
+          @if (viewMode() === 'split') {
             <div class="split-view">
               <div class="diff-panel">
                 <div class="panel-header">
                   <h3>原始 (Left)</h3>
                 </div>
                 <div class="panel-content">
-                  @if (diffResult.left) {
+                  @if (diffResult()!.left) {
                     <app-json-tree
-                      [node]="diffResult.left"
+                      [node]="diffResult()!.left!"
                       [level]="0"
                       [side]="'left'"
                     ></app-json-tree>
@@ -133,9 +140,9 @@
                   <h3>目标 (Right)</h3>
                 </div>
                 <div class="panel-content">
-                  @if (diffResult.right) {
+                  @if (diffResult()!.right) {
                     <app-json-tree
-                      [node]="diffResult.right"
+                      [node]="diffResult()!.right!"
                       [level]="0"
                       [side]="'right'"
                     ></app-json-tree>
@@ -149,11 +156,11 @@
             </div>
           }
           
-          @if (viewMode === 'unified') {
+          @if (viewMode() === 'unified') {
             <div class="unified-view">
-              @if (diffResult.left) {
+              @if (diffResult()!.left) {
                 <app-json-tree
-                  [node]="diffResult.left"
+                  [node]="diffResult()!.left!"
                   [level]="0"
                   [side]="'right'"
                 ></app-json-tree>
@@ -166,6 +173,6 @@
   </main>
 
   <footer class="app-footer">
-    <p>JSON Diff 可视化工具 - 使用 Angular 构建</p>
+    <p>JSON Diff 可视化工具 - 使用 Angular Standalone 架构构建</p>
   </footer>
 </div>
