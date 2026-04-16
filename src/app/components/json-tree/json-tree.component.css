@@ -1,0 +1,139 @@
+.tree-node {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.node-row {
+  display: flex;
+  align-items: center;
+  padding: 2px 4px;
+  border-radius: 2px;
+  cursor: default;
+  min-height: 20px;
+}
+
+.node-row:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.diff-added .node-row {
+  background-color: rgba(34, 197, 94, 0.1);
+  border-left: 3px solid #22c55e;
+}
+
+.diff-removed .node-row {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-left: 3px solid #ef4444;
+}
+
+.diff-modified .node-row {
+  background-color: rgba(245, 158, 11, 0.1);
+  border-left: 3px solid #f59e0b;
+}
+
+.diff-unchanged .node-row {
+  border-left: 3px solid transparent;
+}
+
+.expand-icon {
+  width: 16px;
+  min-width: 16px;
+  cursor: pointer;
+  color: #666;
+  font-size: 10px;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.expand-icon:hover {
+  color: #333;
+}
+
+.expand-icon.placeholder {
+  visibility: hidden;
+}
+
+.node-key {
+  color: #0550ae;
+  font-weight: 500;
+  margin-right: 4px;
+  white-space: nowrap;
+}
+
+.node-key.array-index {
+  color: #953800;
+  font-weight: 400;
+}
+
+.node-value-preview {
+  color: #666;
+  font-style: italic;
+  cursor: pointer;
+}
+
+.node-value-preview:hover {
+  text-decoration: underline;
+}
+
+.node-value {
+  white-space: nowrap;
+}
+
+.node-value .string-value {
+  color: #0a3069;
+}
+
+.node-value .number-value {
+  color: #0550ae;
+}
+
+.node-value .boolean-value {
+  color: #cf222e;
+}
+
+.node-value .null-value {
+  color: #6e7781;
+  font-style: italic;
+}
+
+.action-buttons {
+  margin-left: 8px;
+  display: flex;
+  gap: 4px;
+}
+
+.btn-toggle-all {
+  background: none;
+  border: 1px solid #d0d7de;
+  border-radius: 3px;
+  padding: 0 4px;
+  font-size: 10px;
+  cursor: pointer;
+  color: #656d76;
+  font-family: inherit;
+}
+
+.btn-toggle-all:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+  color: #111827;
+}
+
+.node-children {
+  margin-left: 8px;
+}
+
+:host ::ng-deep .diff-added {
+  color: #1a5f1a;
+}
+
+:host ::ng-deep .diff-removed {
+  color: #7a2424;
+}
+
+:host ::ng-deep .diff-modified {
+  color: #7a5c00;
+}

@@ -1,0 +1,55 @@
+<div class="tree-node" [class]="nodeClass" [ngStyle]="getIndentStyle()">
+  <div class="node-row" (click)="$event.stopPropagation()">
+    @if (isExpandable) {
+      <span class="expand-icon" (click)="toggleExpand()">
+        @if (node.isExpanded) {
+          ▼
+        } @else {
+          ▶
+        }
+      </span>
+    } @else {
+      <span class="expand-icon placeholder"></span>
+    }
+    
+    <span class="node-key" [class.array-index]="isArrayIndex()">
+      @if (displayKey) {
+        {{ displayKey }}:
+      }
+    </span>
+    
+    @if (hasChildren) {
+      <span class="node-value-preview" (click)="toggleExpand()">
+        {{ valuePreview }}
+      </span>
+      @if (node.children?.length) {
+        <span class="action-buttons">
+          <button class="btn-toggle-all" (click)="toggleChildren(true)" title="全部展开">
+            [+]
+          </button>
+          <button class="btn-toggle-all" (click)="toggleChildren(false)" title="全部折叠">
+            [-]
+          </button>
+        </span>
+      }
+    } @else {
+      <span class="node-value">
+        {{ valuePreview }}
+      </span>
+    }
+  </div>
+  
+  @if (hasChildren && node.isExpanded) {
+    <div class="node-children">
+      @for (child of node.children; track child.path) {
+        <app-json-tree
+          [node]="child"
+          [level]="level + 1"
+          [side]="side"
+          (toggle)="toggle.emit()"
+          (toggleAll)="toggleAll.emit($event)">
+        </app-json-tree>
+      }
+    </div>
+  }
+</div>

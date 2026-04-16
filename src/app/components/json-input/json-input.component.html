@@ -1,0 +1,59 @@
+<div class="json-input-container">
+  <div class="input-header">
+    <div class="header-left">
+      <h3 class="label">{{ label }}</h3>
+      @if (!isEmpty && isValid) {
+      <span class="valid-badge">✓ 有效 JSON</span>
+      }
+    </div>
+
+    <div class="header-right">
+      @if (side === 'left') {
+      <div class="sample-selector">
+        <button class="btn-sample" (click)="loadSampleData(0)" title="加载用户配置示例">
+          示例1
+        </button>
+        <button class="btn-sample" (click)="loadSampleData(1)" title="加载数组嵌套示例">
+          示例2
+        </button>
+        <button class="btn-sample" (click)="loadSampleData(2)" title="加载大型嵌套示例">
+          示例3
+        </button>
+      </div>
+      }
+
+      <div class="action-buttons">
+        <label class="btn-file" title="导入 JSON 文件">
+          <input type="file" accept=".json" (change)="onFileChange($event)" style="display: none;">
+          📂 导入
+        </label>
+
+        @if (!isEmpty) {
+        <button class="btn-action" (click)="formatJson()" title="格式化 JSON">
+          美化
+        </button>
+        <button class="btn-action" (click)="minifyJson()" title="压缩 JSON">
+          压缩
+        </button>
+        <button class="btn-action" (click)="copyToClipboard()" title="复制到剪贴板">
+          📋 复制
+        </button>
+        <button class="btn-action btn-danger" (click)="clearAll()" title="清空">
+          ✕ 清空
+        </button>
+        }
+      </div>
+    </div>
+  </div>
+
+  <textarea class="json-textarea" [class.has-error]="!isValid" [value]="value" (input)="onTextChange($event)"
+    placeholder="在此输入或粘贴 JSON 数据..." spellcheck="false">
+  </textarea>
+
+  @if (validationError) {
+  <div class="error-message">
+    <span class="error-icon">⚠️</span>
+    {{ validationError }}
+  </div>
+  }
+</div>
